@@ -1,0 +1,12 @@
+.idea/
+backend
+.DS_Store
+configs/bot.json
+.env
+amazon.zip
+*.zip
+*.log
+*.png
+./chrome_user_data
+./test
+api_keys.env

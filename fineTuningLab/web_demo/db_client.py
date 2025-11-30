@@ -1,11 +1,13 @@
+import json
+
 from dotenv import load_dotenv
 load_dotenv("api_keys.env")
 import os
 import re
-import json
-import requests
 import weaviate
-from tqdm import tqdm
+from weaviate.classes.init import Auth
+
+
 
 def rrf(rankings, k=60):
     if not isinstance(rankings, list):
@@ -30,275 +32,273 @@ def rrf(rankings, k=60):
 
 class HotelDB():
     def __init__(self, url="http://8.217.22.255:6500"):
-        self.client = weaviate.Client(url=url,
-          additional_headers={
-              "X-OpenAI-Api-Key":os.getenv("OPENAI_API_KEY")
-          }
+        client = weaviate.connect_to_weaviate_cloud(
+            cluster_url="https://ipu4fofq3cudvfcc1ek7a.c0.asia-southeast1.gcp.weaviate.cloud",
+            auth_credentials=Auth.api_key(os.getenv("WEAVIATE_API_KEY")),
+            headers={
+                "X-OpenAI-Api-Key": os.getenv("OPENAI_API_KEY"),
+                "X-HuggingFace-Api-Key": os.getenv("HUGGINGFACE_API_KEY")},
+            additional_config=weaviate.config.AdditionalConfig(
+                timeout=weaviate.config.Timeout(init=10)
+            )
         )
+        self.client = client
 
     def insert(self):
-        self.client.schema.delete_class("Hotel")
-        schema = {
-          "classes": [
-            {
-              "class": "Hotel",
-              "description": "hotel info",
-              "properties": [
-                {
-                  "dataType": ["number"], 
-                  "description": "id of hotel", 
-                  "name": "hotel_id" 
-                },
-                {
-                  "dataType": ["text"],
-                  "description": "name of hotel",
-                  "name": "_name", #分词过用于搜索的
-                  "indexSearchable": True,
-                  "tokenization": "whitespace",
-                  "moduleConfig": {
-                    "text2vec-openai": { "skip": True }
-                  },
-                },
-                {
-                  "dataType": ["text"],
-                  "description": "type of hotel",
-                  "name": "name",
-                  "indexSearchable": False,
-                  "moduleConfig": {
-                    "text2vec-openai": { "skip": True }
-                  },
-                },
-                {
-                  "dataType": ["text"],
-                  "description": "type of hotel",
-                  "name": "type",
-                  "indexSearchable": False,
-                  "moduleConfig": {
-                    "text2vec-openai": { "skip": True }
-                  },
-                },
-                {
-                  "dataType": ["text"],
-                  "description": "address of hotel",
-                  "name": "_address", #分词过用于搜索的
-                  "indexSearchable": True,
-                  "tokenization": "whitespace",
-                  "moduleConfig": {
-                    "text2vec-openai": { "skip": True }
-                  },
-                },
-                {
-                  "dataType": ["text"],
-                  "description": "type of hotel",
-                  "name": "address",
-                  "indexSearchable": False,
-                  "moduleConfig": {
-                    "text2vec-openai": { "skip": True }
-                  },
-                },
-                {
-                  "dataType": ["text"],
-                  "description": "nearby subway",
-                  "name": "subway",
-                  "indexSearchable": False,
-                  "moduleConfig": {
-                    "text2vec-openai": { "skip": True }
-                  },
-                },
-                {
-                  "dataType": ["text"],
-                  "description": "phone of hotel",
-                  "name": "phone",
-                  "indexSearchable": False,
-                  "moduleConfig": {
-                    "text2vec-openai": { "skip": True }
-                  },
-                },
-                { 
-                  "dataType": ["number"], 
-                  "description": "price of hotel",   
-                  "name": "price" 
-                },
-                { 
-                  "dataType": ["number"], 
-                  "description": "rating of hotel",
-                  "name": "rating" 
-                },
-                {
-                  "dataType": ["text"],
-                  "description": "facilities provided",
-                  "name": "facilities",
-                  "indexSearchable": True,
-                  "moduleConfig": {
-                    "text2vec-openai": { "skip": False }
-                  },
-                },
-              ],
-              "vectorizer": "text2vec-openai",
-              "moduleConfig": {
-                "text2vec-openai": {
-                  "vectorizeClassName": False,
-                  "model": "ada",
-                  "modelVersion": "002",
-                  "type": "text"
-                },
-              },
-            }
-          ]
-        }
+        """用 v4 方式创建 Hotel Collection 并导入数据"""
+        from weaviate.classes.config import Configure, Property, DataType, Tokenization
 
-        self.client.schema.create(schema)
+        collection_name = "Hotel"
 
-        url = 'https://raw.githubusercontent.com/agiclass/hotel-chatbot/main/data/hotel.json'
-        if not os.path.exists('hotel.json'):
-            print("Downloading file...")
-            response = requests.get(url)
-            with open('hotel.json', 'wb') as file:
-                file.write(response.content)
-            print("Download complete!")
-        else:
-            print("File already exists.")
-        with open('hotel.json', 'r') as f:
-            hotels = json.load(f)
+        # 使用上下文管理器确保连接关闭
+        with self.client as client:
+            # 删除已存在的 Collection
+            if client.collections.exists(collection_name):
+                print(f"⚠️ Collection '{collection_name}' 已存在，正在删除...")
+                client.collections.delete(collection_name)
 
-        self.client.batch.configure(batch_size=4, dynamic=True)
-
-        for hotel in tqdm(hotels):
-            self.client.batch.add_data_object(
-                data_object=hotel,
-                class_name="Hotel",
-                uuid=weaviate.util.generate_uuid5(hotel, "Hotel")
+            # 创建新 Collection
+            client.collections.create(
+                name=collection_name,
+                description="hotel info",
+                # vectorizer_config=Configure.Vectorizer.text2vec_huggingface(
+                #     model="sentence-transformers/all-MiniLM-L6-v2",  # 免费、轻量、中文可用
+                #     wait_for_model=False,
+                #     use_gpu=False,
+                #     vectorize_collection_name=False,
+                # ),
+                vectorizer_config=Configure.Vectorizer.text2vec_huggingface(
+                    model="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",  # 多语言，支持中文
+                    wait_for_model=False,
+                    use_gpu=False,
+                    vectorize_collection_name=False,
+                ),
+                properties=[
+                    # hotel_id
+                    Property(
+                        name="hotel_id",
+                        data_type=DataType.INT,
+                        description="id of hotel"
+                    ),
+                    # _name（用于 BM25 搜索）
+                    Property(
+                        name="_name",
+                        data_type=DataType.TEXT,
+                        description="name of hotel (tokenized for search)",
+                        index_filterable=True,
+                        index_searchable=True,
+                        tokenization=Tokenization.WHITESPACE,  # ✅ 修复点1
+                        # skip_vectorization=True,
+                    ),
+                    # name（原始值）
+                    Property(
+                        name="name",
+                        data_type=DataType.TEXT,
+                        description="type of hotel",
+                        # skip_vectorization=True,
+                    ),
+                    # type
+                    Property(
+                        name="type",
+                        data_type=DataType.TEXT,
+                        description="type of hotel",
+                        # skip_vectorization=True,
+                    ),
+                    # _address（用于 BM25 搜索）
+                    Property(
+                        name="_address",
+                        data_type=DataType.TEXT,
+                        description="address of hotel (tokenized for search)",
+                        index_filterable=True,
+                        index_searchable=True,
+                        tokenization=Tokenization.WHITESPACE,  # ✅ 修复点1
+                        # skip_vectorization=True,
+                    ),
+                    # address（原始值）
+                    Property(
+                        name="address",
+                        data_type=DataType.TEXT,
+                        description="type of hotel",
+                        # skip_vectorization=True,
+                    ),
+                    # subway
+                    Property(
+                        name="subway",
+                        data_type=DataType.TEXT,
+                        description="nearby subway",
+                        # skip_vectorization=True,
+                    ),
+                    # phone
+                    Property(
+                        name="phone",
+                        data_type=DataType.TEXT,
+                        description="phone of hotel",
+                        # skip_vectorization=True,
+                    ),
+                    # price
+                    Property(
+                        name="price",
+                        data_type=DataType.NUMBER,
+                        description="price of hotel"
+                    ),
+                    # rating
+                    Property(
+                        name="rating",
+                        data_type=DataType.NUMBER,
+                        description="rating of hotel"
+                    ),
+                    # facilities（唯一被向量化的文本字段）
+                    Property(
+                        name="facilities",
+                        data_type=DataType.TEXT,
+                        description="facilities provided",
+                        index_filterable=True,
+                        index_searchable=True,
+                        skip_vectorization=False,  # 允许 OpenAI 向量化
+                    ),
+                ]
             )
+            print(f"✅ Collection '{collection_name}' 创建成功")
 
-        self.client.batch.flush()
+            # 下载并加载数据
+            import requests
+            import json
+            from tqdm import tqdm
+
+            url = "https://raw.githubusercontent.com/agiclass/hotel-chatbot/main/data/hotel.json"
+            if not os.path.exists("hotel.json"):
+                print("📥 正在下载 hotel.json...")
+                try:
+                    response = requests.get(url, timeout=30)  # 增加超时时间
+                    response.raise_for_status()
+                    with open("hotel.json", "w", encoding="utf-8") as f:
+                        json.dump(response.json(), f, ensure_ascii=False, indent=2)
+                    print("✅ 下载完成")
+                except Exception as e:
+                    print(f"❌ 下载失败: {e}")
+                    return  # 如果下载失败，提前退出，避免后续操作
+            else:
+                print("📁 hotel.json 已存在")
+
+            with open("hotel.json", "r", encoding="utf-8") as f:
+                hotels = json.load(f)
+
+            # 批量导入数据
+            collection = client.collections.get(collection_name)
+            print(f"📤 正在导入 {len(hotels)} 条酒店数据...")
+
+            with collection.batch.dynamic() as batch:
+                for hotel in tqdm(hotels, desc="导入进度"):
+                    batch.add_object(
+                        properties=hotel,
+                        uuid=weaviate.util.generate_uuid5(hotel, collection_name)
+                    )
+
+            # 检查失败对象
+            if collection.batch.failed_objects:
+                print(f"⚠️ 导入失败数量: {len(collection.batch.failed_objects)}")
+                print("第一个失败对象错误:", collection.batch.failed_objects[0].message)
+            else:
+                print("✅ 所有数据导入成功！")
 
     def search(self, dsl, name="Hotel", limit=1):
-        # dsl中过滤掉None值
+        # 清理 DSL
         dsl = {k: v for k, v in dsl.items() if v is not None}
-        _limit = limit + 10 # 多搜10条，让取top `limit`条
+        _limit = limit + 10
+        output_fields = ["hotel_id", "name", "type", "address", "phone", "subway", "facilities", "price", "rating"]
+
+        collection = self.client.collections.get(name)
+
+        # === 1. 构建 filters (v4) ===
+        from weaviate.classes.query import Filter
+        filters = None
+
+        if "type" in dsl:
+            filters = Filter.by_property("type").equal(dsl["type"])
+        if "price_range_lower" in dsl:
+            f = Filter.by_property("price").greater_than(dsl["price_range_lower"])
+            filters = f if filters is None else filters & f
+        if "price_range_upper" in dsl:
+            f = Filter.by_property("price").less_than(dsl["price_range_upper"])
+            filters = f if filters is None else filters & f
+        if "rating_range_lower" in dsl:
+            f = Filter.by_property("rating").greater_than(dsl["rating_range_lower"])
+            filters = f if filters is None else filters & f
+        if "rating_range_upper" in dsl:
+            f = Filter.by_property("rating").less_than(dsl["rating_range_upper"])
+            filters = f if filters is None else filters & f
+
         candidates = []
-        output_fields = ["hotel_id","name","type","address","phone","subway","facilities","price","rating"]
-        # ===================== assemble filters ========================= #
-        filters = [{
-            "path": ["price"],
-            "operator": "GreaterThan",
-            "valueNumber": 0,
-        }]
-        keys = [
-            "type",
-            "price_range_lower",
-            "price_range_upper",
-            "rating_range_lower",
-            "rating_range_upper",
-        ]
-        if any(key in dsl for key in keys):
-            if "type" in dsl:
-                filters.append(
-                    {
-                        "path": ["type"],
-                        "operator": "Equal",
-                        "valueString": dsl["type"],
-                    }
-                )
-            if "price_range_lower" in dsl:
-                filters.append(
-                    {
-                        "path": ["price"],
-                        "operator": "GreaterThan",
-                        "valueNumber": dsl["price_range_lower"],
-                    }
-                )
-            if "price_range_upper" in dsl:
-                filters.append(
-                    {
-                        "path": ["price"],
-                        "operator": "LessThan",
-                        "valueNumber": dsl["price_range_upper"],
-                    }
-                )
-            if "rating_range_lower" in dsl:
-                filters.append(
-                    {
-                        "path": ["rating"],
-                        "operator": "GreaterThan",
-                        "valueNumber": dsl["rating_range_lower"],
-                    }
-                )
-            if "rating_range_upper" in dsl:
-                filters.append(
-                    {
-                        "path": ["rating"],
-                        "operator": "LessThan",
-                        "valueNumber": dsl["rating_range_upper"],
-                    }
-                )
-        if (len(filters)) == 1:
-            filters = filters[0]
-        elif len(filters) > 1:
-            filters = {"operator": "And", "operands": filters}
-        # ===================== vector search ============================= #
-        if "facilities" in dsl:
-            query = self.client.query.get(name, output_fields)
-            query = query.with_near_text(
-                {"concepts": [f'酒店提供:{";".join(dsl["facilities"])}']}
+
+        # === 2. 向量搜索 (facilities) ===
+        if "facilities" in dsl and dsl["facilities"]:
+            query_text = "酒店提供：" + "，".join(dsl["facilities"])
+            res = collection.query.near_text(
+                query=query_text,
+                limit=_limit,
+                filters=filters,
+                return_properties=output_fields
             )
-            if filters:
-                query = query.with_where(filters)
-            query = query.with_limit(_limit)
-            result = query.do()
-            candidates = rrf([candidates, result["data"]["Get"][name]])
-        # ===================== keyword search ============================ #
-        if "name" in dsl:
-            text = " ".join(re.findall(r"[\dA-Za-z\-]+|\w", dsl["name"]))
-            query = self.client.query.get(name, output_fields)
-            query = query.with_bm25(query=text, properties=["_name"])
-            if filters:
-                query = query.with_where(filters)
-            query = query.with_limit(_limit)
-            result = query.do()
-            candidates = rrf([candidates, result["data"]["Get"][name]])
-        if "address" in dsl:
-            text = " ".join(re.findall(r"[\dA-Za-z\-]+|\w", dsl["address"]))
-            query = self.client.query.get(name, output_fields)
-            query = query.with_bm25(query=text, properties=["_address"])
-            if filters:
-                query = query.with_where(filters)
-            query = query.with_limit(_limit)
-            result = query.do()
-            candidates = rrf([candidates, result["data"]["Get"][name]])
-        # ====================== condition search ========================== #
-        if not candidates:
-            query = self.client.query.get(name, output_fields)
-            if filters:
-                query = query.with_where(filters)
-            query = query.with_limit(_limit)
-            result = query.do()
-            candidates = result["data"]["Get"][name]
-        # ========================== sort ================================= #
+            candidates = [obj.properties for obj in res.objects]
+
+        # === 3. 关键词搜索 (name) ===
+        elif "name" in dsl and dsl["name"]:
+            import re
+            clean_name = " ".join(re.findall(r"[\w\-]+", dsl["name"]))
+            res = collection.query.bm25(
+                query=clean_name,
+                query_properties=["_name"],
+                limit=_limit,
+                filters=filters,
+                return_properties=output_fields
+            )
+            candidates = [obj.properties for obj in res.objects]
+
+        # === 4. 关键词搜索 (address) ===
+        elif "address" in dsl and dsl["address"]:
+            import re
+            clean_addr = " ".join(re.findall(r"[\w\-]+", dsl["address"]))
+            res = collection.query.bm25(
+                query=clean_addr,
+                query_properties=["_address"],
+                limit=_limit,
+                filters=filters,
+                return_properties=output_fields
+            )
+            candidates = [obj.properties for obj in res.objects]
+
+        # === 5. 纯结构化过滤 ===
+        else:
+            res = collection.query.fetch_objects(
+                limit=_limit,
+                filters=filters,
+                return_properties=output_fields
+            )
+            candidates = [obj.properties for obj in res.objects]
+
+        # === 6. 排序 ===
         if "sort.slot" in dsl:
-            if dsl["sort.ordering"] == "descend":
-                candidates = sorted(
-                    candidates, key=lambda x: x[dsl["sort.slot"]], reverse=True
-                )
-            else:
-                candidates = sorted(
-                    candidates, key=lambda x: x[dsl["sort.slot"]]
-                )
-        
+            reverse = dsl.get("sort.ordering") == "descend"
+            slot = dsl["sort.slot"]
+            candidates = sorted(candidates, key=lambda x: x.get(slot, 0), reverse=reverse)
+
+        # === 7. name 后过滤（子串匹配）===
         if "name" in dsl:
-          final = []
-          for r in candidates:
-              if all(char in r['name'] for char in dsl['name']):
-                  final.append(r)
-          candidates = final
-        
-        if len(candidates) > limit:
-            candidates = candidates[:limit]
-        
-        return candidates
+            filtered = []
+            for r in candidates:
+                if dsl["name"] in r.get("name", ""):
+                    filtered.append(r)
+            candidates = filtered
+
+        return candidates[:limit]
 
 
 if __name__ == "__main__":
     db = HotelDB()
-    result = db.search({'facilities':['打麻将']}, limit=3)
-    print(json.dumps(result,ensure_ascii=False))
+    try:
+        # 你的逻辑，比如 db.search(...)
+        result = db.search({"facilities": ["wifi"]}, limit=3)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    finally:
+        # 确保连接被关闭
+        db.client.close()
