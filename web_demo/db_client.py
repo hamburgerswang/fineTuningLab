@@ -8,7 +8,6 @@ import weaviate
 from weaviate.classes.init import Auth
 
 
-
 def rrf(rankings, k=60):
     if not isinstance(rankings, list):
         raise ValueError("Rankings should be a list.")
@@ -31,7 +30,7 @@ def rrf(rankings, k=60):
 
 
 class HotelDB():
-    def __init__(self, url="http://8.217.22.255:6500"):
+    def __init__(self):
         client = weaviate.connect_to_weaviate_cloud(
             cluster_url="https://ipu4fofq3cudvfcc1ek7a.c0.asia-southeast1.gcp.weaviate.cloud",
             auth_credentials=Auth.api_key(os.getenv("WEAVIATE_API_KEY")),

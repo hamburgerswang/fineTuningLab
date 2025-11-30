@@ -20,12 +20,14 @@ args = parser.parse_args()
 db = HotelDB()
 tokenizer, model = load_model(args.model, args.ckpt)
 
+
 def get_completion(prompt):
     inputs = tokenizer([prompt], return_tensors="pt").to("cuda")
     with torch.no_grad():
         outputs = model.generate(**inputs, max_new_tokens=1024)
         response = tokenizer.decode(outputs[:,inputs['input_ids'].shape[1]:][0], skip_special_tokens=True)
     return response
+
 
 def remove_search_history(context):
     i = 0
@@ -34,6 +36,7 @@ def remove_search_history(context):
             del context[i]
         else:
             i += 1
+
 
 def chat(user_input, chatbot, context, search_field, return_field):
     context.append({'role':'user','content':user_input})
@@ -48,7 +51,11 @@ def chat(user_input, chatbot, context, search_field, return_field):
             remove_search_history(context)
             context.append({'role':'search','arguments':search_query})
             # 调用酒店查询接口
-            return_field = db.search(search_query, limit=3)
+            try:
+                return_field = db.search(search_query, limit=3)
+            finally:
+                db.client.close()
+
             context.append({'role':'return','records':return_field})
             keys = []
             if return_field:
@@ -64,8 +71,10 @@ def chat(user_input, chatbot, context, search_field, return_field):
     context.append({'role':'assistant','content':reply})
     return "", chatbot, context, search_field, return_field
 
+
 def reset_state():
     return [], [], "", "", None
+
 
 def main():
     with gr.Blocks() as demo:
