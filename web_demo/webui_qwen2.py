@@ -43,7 +43,13 @@ def remove_search_history(context):
 
 def chat(user_input, chatbot, context, search_field, return_field):
     context.append({'role':'user','content':user_input})
-    response = get_completion(build_prompt(context))
+    # 构建 prompt 并打印
+    prompt = build_prompt(context)
+    print("\n" + "=" * 50)
+    print("【发送给模型的 Prompt】")
+    print(prompt)
+    print("=" * 50 + "\n")
+    response = get_completion(prompt)
     #print(response)
     # 判断以search命令开头时去执行搜索
     if "search" in response:
