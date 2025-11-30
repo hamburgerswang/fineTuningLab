@@ -1,3 +1,4 @@
+
 import json
 import torch
 import argparse
@@ -7,10 +8,22 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 from data_preprocess import build_prompt, parse_json
 
+
 def load_model(model_path, checkpoint_path):
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype=torch.bfloat16)
     model = PeftModel.from_pretrained(model, model_id=checkpoint_path).to("cuda").eval()
+    return tokenizer, model
+
+
+# 加载原始模型
+def origin_load_model(model_path):
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        torch_dtype=torch.bfloat16,
+        device_map="auto"
+    ).eval()
     return tokenizer, model
 
 class Evaluator:

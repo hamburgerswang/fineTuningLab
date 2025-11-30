@@ -1,6 +1,7 @@
 import json
 from torch.utils.data import Dataset
 
+
 # 定义一个名为 InputOutputDataset 的新类，它继承自 Dataset 类。这使得我们的数据集能够与 PyTorch 的数据加载器兼容，支持批处理和其他数据加载功能
 class InputOutputDataset(Dataset):
     # 定义类的初始化方法，接收三个参数：data（数据集）、tokenizer（分词器）、args（其他参数配置）
@@ -46,6 +47,7 @@ class InputOutputDataset(Dataset):
             "labels": labels
         }
 
+
 # 用于构建提示字符串
 def build_prompt(context):
     # 检查上下文是否为字符串类型，如果是，则将其解析为 JSON 对象
@@ -82,6 +84,7 @@ def build_prompt(context):
     # 返回构建好的完整提示字符串
     return prompt
 
+
 # 用于构建响应字符串
 def build_response(response):
     # 检查响应是否为字符串类型，若是则解析为 JSON 对象
@@ -99,6 +102,7 @@ def build_response(response):
         filtered_obj = {k: v for k, v in obj.items() if v is not None}
         # 构建搜索的响应字符串，格式为
         return '<|im_start|>search\n' + json.dumps(filtered_obj,indent=4,ensure_ascii=False) + '<|im_end|>'
+
 
 # 接受一个字符串并尝试从中解析出 JSON 对象
 def parse_json(string):

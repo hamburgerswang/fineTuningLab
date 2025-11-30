@@ -8,7 +8,7 @@ import argparse
 import gradio as gr
 import pandas as pd
 from db_client import HotelDB
-from evaluate import load_model
+from evaluate import load_model, origin_load_model
 from data_preprocess import build_prompt, parse_json
 
 # init gloab variables
@@ -18,7 +18,10 @@ parser.add_argument("--ckpt", type=str, default=None, required=True, help="The c
 args = parser.parse_args()
 
 db = HotelDB()
+# 加载微调模型
 tokenizer, model = load_model(args.model, args.ckpt)
+# 加载原始模型
+# tokenizer, model = origin_load_model(args.model)
 
 
 def get_completion(prompt):
