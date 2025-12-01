@@ -164,7 +164,7 @@ class HotelDB():
             import json
             from tqdm import tqdm
 
-            url = "https://raw.githubusercontent.com/agiclass/hotel-chatbot/main/data/hotel.json"
+            url = "https://raw.githubusercontent.com/hamburgerswang/hotel-chatbot/main/data/hotel.json"
             if not os.path.exists("hotel.json"):
                 print("📥 正在下载 hotel.json...")
                 try:
