@@ -158,7 +158,7 @@
       <option name="presentableId" value="Default" />
       <updated>1764480933457</updated>
       <workItem from="1764480935077" duration="7170000" />
-      <workItem from="1764492984827" duration="8133000" />
+      <workItem from="1764492984827" duration="8734000" />
     </task>
     <task id="LOCAL-00001" summary="init">
       <option name="closed" value="true" />
@@ -179,7 +179,7 @@
     <option name="LAST_COMMIT_MESSAGE" value="init" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/fineTuningLab$db_client__1_.coverage" NAME="db_client (1) Coverage Results" MODIFIED="1764494330570" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/web_demo" />
+    <SUITE FILE_PATH="coverage/fineTuningLab$db_client__1_.coverage" NAME="db_client (1) Coverage Results" MODIFIED="1764588341278" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/web_demo" />
     <SUITE FILE_PATH="coverage/fineTuningLab$db_client.coverage" NAME="db_client Coverage Results" MODIFIED="1764492267275" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/fineTuningLab/web_demo" />
     <SUITE FILE_PATH="coverage/fineTuningLab$webui_qwen2.coverage" NAME="webui_qwen2 Coverage Results" MODIFIED="1764492714331" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/fineTuningLab/web_demo" />
   </component>

@@ -3,7 +3,9 @@ import json
 from dotenv import load_dotenv
 load_dotenv("api_keys.env")
 import os
-import re
+import requests
+import json
+from tqdm import tqdm
 import weaviate
 from weaviate.classes.init import Auth
 
@@ -159,11 +161,6 @@ class HotelDB():
             )
             print(f"✅ Collection '{collection_name}' 创建成功")
 
-            # 下载并加载数据
-            import requests
-            import json
-            from tqdm import tqdm
-
             url = "https://raw.githubusercontent.com/hamburgerswang/hotel-chatbot/main/data/hotel.json"
             if not os.path.exists("hotel.json"):
                 print("📥 正在下载 hotel.json...")
@@ -295,9 +292,12 @@ class HotelDB():
 if __name__ == "__main__":
     db = HotelDB()
     try:
+        # insert
+        db.insert()
+        print("✅ 数据导入完成！")
         # 你的逻辑，比如 db.search(...)
-        result = db.search({"facilities": ["wifi"]}, limit=3)
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        # result = db.search({"facilities": ["wifi"]}, limit=3)
+        # print(json.dumps(result, ensure_ascii=False, indent=2))
     finally:
         # 确保连接被关闭
         db.client.close()
