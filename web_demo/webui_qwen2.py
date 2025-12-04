@@ -41,6 +41,35 @@ def remove_search_history(context):
             i += 1
 
 
+# ======================== 修改后的 lora_chat 函数 ========================
+def lora_chat(user_input, chatbot, context, search_field, return_field):
+    """
+    修改后的 chat 函数，只执行一次模型生成，不执行工具调用。
+    接受全部 5 个参数，但只使用前 3 个进行核心逻辑，并返回所有 5 个值。
+    """
+    context.append({'role': 'user', 'content': user_input})
+
+    # 1. 构建 Prompt
+    prompt = build_prompt(context)
+    print("\n" + "=" * 50)
+    print("【发送给模型的 Prompt】")
+    print(prompt)
+    print("=" * 50 + "\n")
+
+    # 2. 执行模型生成（仅一次）
+    response = get_completion(prompt)
+
+    # 3. 更新对话状态
+    reply = response.replace("assistant", "")
+    chatbot.append((user_input, reply))
+    context.append({'role': 'assistant', 'content': reply})
+
+    # 4. 返回所有 5 个 Gradio 输出所需的值
+    # 注意：search_field 和 return_field 原样返回，不做更新。
+    return "", chatbot, context, search_field, return_field # <--- 修正后的返回值
+# =========================================================================
+
+
 def chat(user_input, chatbot, context, search_field, return_field):
     context.append({'role':'user','content':user_input})
     # 构建 prompt 并打印
@@ -107,8 +136,8 @@ def main():
 
         context = gr.State([])
 
-        submitBtn.click(chat, [user_input, chatbot, context, search_field, return_field],
-                        [user_input, chatbot, context, search_field, return_field])
+        # submitBtn.click(lora_chat, [user_input, chatbot, context, search_field, return_field],[user_input, chatbot, context, search_field, return_field])
+        submitBtn.click(chat, [user_input, chatbot, context, search_field, return_field],[user_input, chatbot, context, search_field, return_field])
         emptyBtn.click(reset_state, outputs=[chatbot, context, user_input, search_field, return_field])
 
     demo.queue().launch(share=False, server_name='0.0.0.0', server_port=6006, inbrowser=True)

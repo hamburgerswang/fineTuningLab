@@ -10,6 +10,9 @@ import weaviate
 from weaviate.classes.init import Auth
 
 
+
+# 计算RRF分数
+# 它根据文档在各个搜索结果列表中的排名位置计算分数，将高排名位置给予更高的权重。
 def rrf(rankings, k=60):
     if not isinstance(rankings, list):
         raise ValueError("Rankings should be a list.")
@@ -82,6 +85,7 @@ class HotelDB():
                         description="id of hotel"
                     ),
                     # _name（用于 BM25 搜索）
+                    # BM25 逻辑是一种关键词（Keyword）匹配的评分算法，主要用于信息检索领域，是现代搜索引擎和文本数据库（如 Elasticsearch、Lucene）中广泛使用的一种相关性评分函数。
                     Property(
                         name="_name",
                         data_type=DataType.TEXT,
